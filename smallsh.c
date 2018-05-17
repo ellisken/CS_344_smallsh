@@ -1,0 +1,121 @@
+/*********************************************************************
+ * ** Program Filename: smallsh.c
+ * ** Author: Kendra Ellis <ellisken@oregonstate.edu>
+ * ** Date: May 15, 2018
+ * ** Description: Simple shell program written for CS 344
+ * **   Spring 2018.
+ * *********************************************************************/
+/* Other tasks:
+ * Parse input of ‘$$’ as current process id
+ * Wait for completion of foreground commands before prompting again
+ * Do not wait for background commands to complete, return command line access
+ * and control to user immediately AFTER forking. Periodically check for
+ * background child processes to complete with waidpid(...NOHANG…))
+ * Store PIDs of non-completed background processes in an array?
+ * Print out background process completed BEFORE command line access and control
+ * are returned to the user
+ * Redirect background stdin from /dev/null, redirect stdout to /dev/null if no
+ * other target
+ * Print process id of background process when the process begins
+ * When terminates, show message with PID and exit status. 
+ * Check bckgrnd processes complete BEFORE prompting for a new command
+ * Change behavior of CTRL-C (SIGINT) and CTRL-Z to (SIGTSTP)
+ *
+ * */
+/* List of functions:
+ * getInput()
+ * processInput()
+ * handleIO()
+ * exit()
+ * cd()
+ * status()
+ * Prompt()
+ * execOther()
+ * execBuiltIn()
+ * error()
+ * cleanup()
+ * */
+
+#include <stdbool.h> //For bools
+#include <stdio.h>
+#include <string.h>
+#include <stdlibh>
+
+#define MAX_LENGTH 2048
+#define MAX_ARGS 512
+
+void catchSIGINT(int signo){
+    char* message = "SIGINT. Use CTRL-Z to Stop.\n";
+    write(STDOUT_FILENO, message, 28);
+}
+
+
+
+
+/************************************************************************
+ * ** Function: prompt()
+ * ** Description: Displays the shell prompt ":" and receives user input;
+ *      Re-prompts the user if line starting with "#" or blank line
+ *      encountered.
+ * ** Parameters: size_t buffer_size and a pointer to an array of chars
+ *      for getline() to use.
+ * ** Pre-Conditions: buffer_size and string ptr must be defined
+ * ** Post-Conditions: User input will be stored in string passed to 
+ *      function
+ * *********************************************************************/
+void prompt(size_t *size, char **input){
+    int char_ct = 0; //For checking getline() success
+    bool is_empty = false; //For detecting white space "lines" entered
+    //do while line not blank && first char != '#'
+    do{
+        //Prompt
+        printf(": ");
+        fflush();
+
+        //Get input
+        char_ct = getline(input, size, stdin);
+
+        //Check for getline() interruption error and clear error status
+        if(char_ct == -1){
+            clearerr(stdin);
+            char_ct = 0;
+        }
+        //Check for blank line
+    }while (*(input) != '#' && is_empty == true && char_ct == -1)
+
+    return;
+}
+
+
+
+
+/***********************************************************************
+ *                                 MAIN
+ * ********************************************************************/
+int main(){
+    //Define signal handling
+    struct sigaction SIGINT_action = {0};
+    SIGINT_action.sa_handler = catchSIGINT;
+    sigfillset(&SIGINT_action.sa_mask);
+    sigaction(SIGINT, &SIGINT_action, NULL);
+    
+    //Containers for input, command, args, and files
+    size_t buffer_size = 0;
+    char *user_input = NULL;
+    char *args[MAX_ARGS];
+    char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
+    bool run_in_backgrnd;
+
+    //Run shell
+        //Display prompt and get input
+        //Process input
+        //If built-in command, execute
+        //Else, if not built-in, find command
+            //If valid, fork, handle I/O, execute
+            //Else, display error and set exit status to 1
+        //Clean up containers
+
+    return 0;
+}
+
+
