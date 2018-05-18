@@ -39,7 +39,9 @@
 #include <stdbool.h> //For bools
 #include <stdio.h>
 #include <string.h>
-#include <stdlibh>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 
 #define MAX_LENGTH 2048
 #define MAX_ARGS 512
@@ -55,8 +57,7 @@ void catchSIGINT(int signo){
 /************************************************************************
  * ** Function: prompt()
  * ** Description: Displays the shell prompt ":" and receives user input;
- *      Re-prompts the user if line starting with "#" or blank line
- *      encountered.
+ *      Strips user input of leading and trailing whitespace.
  * ** Parameters: size_t buffer_size and a pointer to an array of chars
  *      for getline() to use.
  * ** Pre-Conditions: buffer_size and string ptr must be defined
@@ -65,12 +66,10 @@ void catchSIGINT(int signo){
  * *********************************************************************/
 void prompt(size_t *size, char **input){
     int char_ct = 0; //For checking getline() success
-    bool is_empty = false; //For detecting white space "lines" entered
-    //do while line not blank && first char != '#'
-    do{
+    
+    while(1){
         //Prompt
         printf(": ");
-        fflush();
 
         //Get input
         char_ct = getline(input, size, stdin);
@@ -80,8 +79,11 @@ void prompt(size_t *size, char **input){
             clearerr(stdin);
             char_ct = 0;
         }
-        //Check for blank line
-    }while (*(input) != '#' && is_empty == true && char_ct == -1)
+        
+        //Trim leading and trailing white space
+
+        break;
+    }
 
     return;
 }
@@ -108,6 +110,7 @@ int main(){
 
     //Run shell
         //Display prompt and get input
+        prompt(&buffer_size, &user_input);
         //Process input
         //If built-in command, execute
         //Else, if not built-in, find command
