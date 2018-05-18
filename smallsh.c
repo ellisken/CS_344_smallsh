@@ -145,8 +145,9 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
                 *backgrnd = true;
                 break;
             //Else, save in args[]
-            /*default:
-                args[arg_ct++] = item;*/
+            default:
+                args[arg_ct++] = item;
+                printf("arg added: %s\n", args[arg_ct - 1]);
         }
         item = strtok(NULL, " ");
     }
