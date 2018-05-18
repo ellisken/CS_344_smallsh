@@ -63,27 +63,35 @@ void catchSIGINT(int signo){
  * ** Pre-Conditions: buffer_size and string ptr must be defined
  * ** Post-Conditions: User input will be stored in string passed to 
  *      function
+ * ** Note: Code for trimming extra whitespace informed by this 
+ *      stackoverflow post:
+ *      https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
  * *********************************************************************/
-void prompt(size_t *size, char **input){
+void prompt(size_t *size, char *input){
     int char_ct = 0; //For checking getline() success
     
     while(1){
         //Prompt
         printf(": ");
-
+        fflush(stdin);
+        
         //Get input
-        char_ct = getline(input, size, stdin);
+        char_ct = getline(&input, size, stdin);
 
         //Check for getline() interruption error and clear error status
         if(char_ct == -1){
             clearerr(stdin);
             char_ct = 0;
         }
-        
-        //Trim leading and trailing white space
-
-        break;
+        else break;
     }
+
+    printf("%s", input);
+    //Trim extra whitespace
+
+    //Free allocated memory
+    //free(input);
+    //input = NULL;
 
     return;
 }
@@ -110,7 +118,7 @@ int main(){
 
     //Run shell
         //Display prompt and get input
-        prompt(&buffer_size, &user_input);
+        prompt(&buffer_size, user_input);
         //Process input
         //If built-in command, execute
         //Else, if not built-in, find command
