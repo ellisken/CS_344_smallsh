@@ -117,18 +117,39 @@ void prompt(char *line){
  *      process option.
  * *********************************************************************/
 bool process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
-    //If string does not exist or is empty, return false
-    if(line == NULL || strlen(line) == 0) return false;
-    //Else, tokenize string by spaces
-    command = strtok(line, " ");
-    //First token is saved in "command"
-    //Swith statement:
-    //If token starts with ">" save in infile
-    //If token starts with "<" save in outfile
-    //If token starts with "&", change value of run_in_background
-    //Else, save in args[]
-    //
+    char *item = NULL; //For tokenizing the input line
+    int arg_ct = 0;
+    //If string does not exist, is empty, or is a comment return false
+    if(line == NULL || strlen(line) == 0 || line[0] == '#') return false;
 
+    //Else, tokenize string by spaces
+    //First token is saved in "command"
+    item = strtok(line, " ");
+    strcpy(command, item);
+    printf("Command: %s\n", command);
+    item = strtok(NULL, " ");
+    while(item != NULL){
+        switch(*item){
+            //If token is "<" save next word in infile
+            case '<':
+                item = strtok(NULL, " ");
+                strcpy(in, item);
+                break;
+            //If token is ">" save next word in outfile
+            case '>':
+                item = strtok(NULL, " ");
+                strcpy(out, item);
+                break;
+            //If token is "&", change value of run_in_background
+            case '&':
+                *backgrnd = true;
+                break;
+            //Else, save in args[]
+            /*default:
+                args[arg_ct++] = item;*/
+        }
+        item = strtok(NULL, " ");
+    }
     return;
     
 }
@@ -158,7 +179,7 @@ int main(){
         prompt(user_input);
         fflush(stdout);
         //Process input
-        memseet(command, '\0', sizeof(command));
+        memset(command, '\0', sizeof(command));
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
         valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
@@ -167,9 +188,7 @@ int main(){
             //If valid, fork, handle I/O, execute
             //Else, display error and set exit status to 1
         //Clean up containers
-        //free(user_input);
         //user_input = NULL;
-
     return 0;
 }
 
