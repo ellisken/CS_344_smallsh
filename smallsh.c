@@ -69,6 +69,7 @@ void catchSIGINT(int signo){
 void prompt(size_t *size, char *input){
     int char_ct = 0; //For checking getline() success
     char* string_endpt; //For removing whitespace 
+    int length; //For storing input length
       
     while(1){
         //Prompt
@@ -86,18 +87,18 @@ void prompt(size_t *size, char *input){
         else break;
     }
 
-    printf("%s", input);
-    //Trim extra whitespace
-    //Find start of string
-    string_endpt = &input[strspn(input, " \t")];
+    //Find start of string (skip leading whitespace)
+    string_endpt = &input[strspn(input, " \t\n")];
     //Reassign input to new starting point
     input = string_endpt;
-    printf("%s", input);
-
-    //Free allocated memory
-    //free(input);
-    //input = NULL;
-
+    //Get string length and find actual endpoint,
+    //strip trailing whitespace
+    string_endpt = input + strlen(input);
+    while(isspace(*--string_endpt))
+        *(string_endpt + 1) = '\0';
+    //Take care of last whitespace char
+    *(string_endpt + 1) = '\0';
+        
     return;
 }
 
@@ -130,6 +131,8 @@ int main(){
             //If valid, fork, handle I/O, execute
             //Else, display error and set exit status to 1
         //Clean up containers
+        free(user_input);
+        user_input = NULL;
 
     return 0;
 }
