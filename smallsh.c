@@ -60,9 +60,6 @@ void catchSIGINT(int signo){
  * ** Description: Displays the shell prompt ":" and receives user input;
  *      Strips user input of leading and trailing whitespace.
  * ** Parameters: None
- * ** Pre-Conditions: Ptr to char must exist to catch return value.
- * ** Post-Conditions: User input will be pointed to by user-defined
- *      char pointer.
  * ** Note: Code for this function largely based on Benjamin Brewster's
  *      getline() example on page 3.3 of CS 344 Block 3.
  * *********************************************************************/
@@ -71,7 +68,7 @@ void prompt(char *line){
     char *input = NULL;
     int char_ct = 0; //For checking getline() success
     char* string_endpt; //For removing whitespace 
-      
+   
     while(1){
         //Prompt
         printf(": ");
@@ -99,12 +96,42 @@ void prompt(char *line){
         *(string_endpt + 1) = '\0';
     //Take care of last whitespace char
     *(string_endpt + 1) = '\0';
-    strcpy(line, input);
-    free(input);
+    //Do not copy if error or blank line
+    if(input == NULL || strlen(input) == 0) return;
+    else{ 
+        strcpy(line, input);
+        free(input);
+    }
     return;
 }
 
 
+/************************************************************************
+ * ** Function: process_input()
+ * ** Description: Parses user input into command, args, and background 
+ *      "&" option. Returns true if successful, returns false if input
+ *      is a comment line (starts with "#") or blank. Does not check
+ *      for correct user input syntax (space delimited).
+ * ** Parameters: User input string, array of pointers to store args,
+ *      strings to hold names of infile & outfile, bool for background
+ *      process option.
+ * *********************************************************************/
+bool process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
+    //If string does not exist or is empty, return false
+    if(line == NULL || strlen(line) == 0) return false;
+    //Else, tokenize string by spaces
+    command = strtok(line, " ");
+    //First token is saved in "command"
+    //Swith statement:
+    //If token starts with ">" save in infile
+    //If token starts with "<" save in outfile
+    //If token starts with "&", change value of run_in_background
+    //Else, save in args[]
+    //
+
+    return;
+    
+}
 
 
 /***********************************************************************
@@ -119,17 +146,22 @@ int main(){
     
     //Containers for input, command, args, and files
     char user_input[MAX_LENGTH];
+    char command[MAX_LENGTH];
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
     bool run_in_backgrnd;
+    bool valid;
 
     //Run shell
         //Display prompt and get input
         memset(user_input, '\0', sizeof(user_input));
         prompt(user_input);
-        printf("%s\n", user_input);
         fflush(stdout);
         //Process input
+        memseet(command, '\0', sizeof(command));
+        memset(in_file, '\0', sizeof(in_file));
+        memset(out_file, '\0', sizeof(out_file));
+        valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
         //If built-in command, execute
         //Else, if not built-in, find command
             //If valid, fork, handle I/O, execute
