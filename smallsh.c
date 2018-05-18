@@ -63,13 +63,13 @@ void catchSIGINT(int signo){
  * ** Pre-Conditions: buffer_size and string ptr must be defined
  * ** Post-Conditions: User input will be stored in string passed to 
  *      function
- * ** Note: Code for trimming extra whitespace informed by this 
- *      stackoverflow post:
- *      https://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
+ * ** Note: Code for this function largely based on Benjamin Brewster's
+ *      getline() example on page 3.3 of CS 344 Block 3.
  * *********************************************************************/
 void prompt(size_t *size, char *input){
     int char_ct = 0; //For checking getline() success
-    
+    char* string_endpt; //For removing whitespace 
+      
     while(1){
         //Prompt
         printf(": ");
@@ -88,6 +88,11 @@ void prompt(size_t *size, char *input){
 
     printf("%s", input);
     //Trim extra whitespace
+    //Find start of string
+    string_endpt = &input[strspn(input, " \t")];
+    //Reassign input to new starting point
+    input = string_endpt;
+    printf("%s", input);
 
     //Free allocated memory
     //free(input);
