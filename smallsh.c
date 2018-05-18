@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <assert.h>
 
 #define MAX_LENGTH 2048
 #define MAX_ARGS 512
@@ -58,26 +59,26 @@ void catchSIGINT(int signo){
  * ** Function: prompt()
  * ** Description: Displays the shell prompt ":" and receives user input;
  *      Strips user input of leading and trailing whitespace.
- * ** Parameters: size_t buffer_size and a pointer to an array of chars
- *      for getline() to use.
- * ** Pre-Conditions: buffer_size and string ptr must be defined
- * ** Post-Conditions: User input will be stored in string passed to 
- *      function
+ * ** Parameters: None
+ * ** Pre-Conditions: Ptr to char must exist to catch return value.
+ * ** Post-Conditions: User input will be pointed to by user-defined
+ *      char pointer.
  * ** Note: Code for this function largely based on Benjamin Brewster's
  *      getline() example on page 3.3 of CS 344 Block 3.
  * *********************************************************************/
-void prompt(size_t *size, char *input){
+void prompt(char *line){
+    size_t buffer_size = 0;
+    char *input = NULL;
     int char_ct = 0; //For checking getline() success
     char* string_endpt; //For removing whitespace 
-    int length; //For storing input length
       
     while(1){
         //Prompt
         printf(": ");
-        fflush(stdin);
+        fflush(stdout);
         
         //Get input
-        char_ct = getline(&input, size, stdin);
+        char_ct = getline(&input, &buffer_size, stdin);
 
         //Check for getline() interruption error and clear error status
         if(char_ct == -1){
@@ -98,7 +99,8 @@ void prompt(size_t *size, char *input){
         *(string_endpt + 1) = '\0';
     //Take care of last whitespace char
     *(string_endpt + 1) = '\0';
-        
+    strcpy(line, input);
+    free(input);
     return;
 }
 
@@ -116,23 +118,25 @@ int main(){
     sigaction(SIGINT, &SIGINT_action, NULL);
     
     //Containers for input, command, args, and files
-    size_t buffer_size = 0;
-    char *user_input = NULL;
+    char user_input[MAX_LENGTH];
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
     bool run_in_backgrnd;
 
     //Run shell
         //Display prompt and get input
-        prompt(&buffer_size, user_input);
+        memset(user_input, '\0', sizeof(user_input));
+        prompt(user_input);
+        printf("%s\n", user_input);
+        fflush(stdout);
         //Process input
         //If built-in command, execute
         //Else, if not built-in, find command
             //If valid, fork, handle I/O, execute
             //Else, display error and set exit status to 1
         //Clean up containers
-        free(user_input);
-        user_input = NULL;
+        //free(user_input);
+        //user_input = NULL;
 
     return 0;
 }
