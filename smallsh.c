@@ -173,6 +173,7 @@ int main(){
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
     bool run_in_backgrnd;
     bool valid;
+    int i;
 
     //Run shell
         //Display prompt and get input
