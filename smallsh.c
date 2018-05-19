@@ -6,7 +6,7 @@
  * **   Spring 2018.
  * *********************************************************************/
 /* Other tasks:
- * Parse input of ‘$$’ as current process id
+ * ****Parse input of ‘$$’ as current process id****
  * Wait for completion of foreground commands before prompting again
  * Do not wait for background commands to complete, return command line access
  * and control to user immediately AFTER forking. Periodically check for
@@ -154,6 +154,18 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
     return;
     
 }
+
+
+
+/************************************************************************
+ * ** Function: builtin_exec()
+ * ** Description: Processes the command. If built-in, executes 
+ *      corresponding built-in command and returns true (success), else 
+ *      returns false.
+ * ** Parameters: Pointer to user-entered command, pointer to array of
+ *      user-entered arguments, pointer to in/out and r
+ * *********************************************************************/
+
 
 
 /***********************************************************************
