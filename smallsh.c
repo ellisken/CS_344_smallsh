@@ -158,14 +158,43 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
 
 
 /************************************************************************
- * ** Function: builtin_exec()
- * ** Description: Processes the command. If built-in, executes 
- *      corresponding built-in command and returns true (success), else 
- *      returns false.
- * ** Parameters: Pointer to user-entered command, pointer to array of
- *      user-entered arguments, pointer to in/out and r
+ * ** Function: exit_shell()
+ * ** Description: Immediately exits the shell and kills all jobs or
+ *      processes started by the shell.
+ * ** Parameters: None
  * *********************************************************************/
+void exit(bool *exit){    
+    //Kill all jobs and processes
+    //
+    //Reset exit value to true
+    *exit = true;
 
+    return;
+}
+
+
+
+/************************************************************************
+ * ** Function: change_dir()
+ * ** Description: 
+ * ** Parameters: Takes either zero or one parameter.
+ * *********************************************************************/
+void change_dir(){    
+    printf("Change dir called\n");
+    return;
+}
+
+
+
+/************************************************************************
+ * ** Function: status()
+ * ** Description: 
+ * ** Parameters: Takes either zero or one parameter.
+ * *********************************************************************/
+void status(){    
+    printf("Status called\n");
+    return;
+}
 
 
 /***********************************************************************
@@ -186,8 +215,10 @@ int main(){
     bool run_in_backgrnd;
     bool valid;
     int i;
+    bool exit = false;
 
     //Run shell
+    while(!exit){
         //Display prompt and get input
         memset(user_input, '\0', sizeof(user_input));
         prompt(user_input);
@@ -198,11 +229,12 @@ int main(){
         memset(out_file, '\0', sizeof(out_file));
         valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
         //If built-in command, execute
+        
         //Else, if not built-in, find command
             //If valid, fork, handle I/O, execute
             //Else, display error and set exit status to 1
         //Clean up containers
-        //user_input = NULL;
+    }
     return 0;
 }
 
