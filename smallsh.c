@@ -165,11 +165,12 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
  *      processes started by the shell.
  * ** Parameters: None
  * *********************************************************************/
-bool exit_shell(){    
+void exit_shell(){    
     //Kill all jobs and processes
     //
     //Return true
-    return 1;
+    exit(0);
+    return;
 }
 
 
@@ -207,7 +208,7 @@ void status(int exit_status){
         printf("exit value %i\n", WEXITSTATUS(exit_status));
     }
     //Else, print terminating signal of last process
-    printf("terminated by signal %i\n", exit_status);
+    else printf("terminated by signal %i\n", exit_status);
     return;
 }
 
@@ -216,7 +217,7 @@ void status(int exit_status){
 //from lecture
 void catchSIGINT(int signo){
     char *message = "Terminated by signal 2\n";
-    write(STDOUT_FILENO, message, 28);
+    write(STDOUT_FILENO, message, 23);
 }
 
 void catchSIGTSTP(int signo){
@@ -254,7 +255,7 @@ int main(){
     bool run_in_backgrnd;
     bool valid;
     int i;
-    bool exit_shell = false;
+    //bool exit_shell = false;
 
     //Set each arg pointer to NULL
     for(i = 0; i < MAX_ARGS; i++){
@@ -262,7 +263,7 @@ int main(){
     }
 
     //Run shell
-    while(!exit_shell){
+    while(1){
         //Display prompt and get input
         memset(user_input, '\0', sizeof(user_input));
         prompt(user_input);
@@ -272,14 +273,22 @@ int main(){
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
         valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
+
         
-        //If built-in command to run in foreground, execute and wait
-        for(i = 0; i < 3; i++){
-            if(strcmp(command, builtin_commands[i]) == 0){
-                //Fork and execute built-in
-                printf("Executing built-in in the foreground\n");
-            }
+        //If built-in command to run in foreground, execute 
+        if(strcmp(command, "status") == 0){      
+            printf("status chosen\n");
+            status(exit_status);
         }
+        else if(strcmp(command, "cd") == 0){
+            printf("cd chosen\n");
+            change_dir(args);
+        }
+        else if(strcmp(command, "exit") == 0){
+            printf("exit chosen\n");
+            exit_shell();
+        }
+    
         
         //Else, if not built-in, fork, handle I/O, find command
             //If valid & foreground, execute and wait
