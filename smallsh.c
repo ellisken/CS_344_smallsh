@@ -189,11 +189,19 @@ bool exit_shell(){
 
 /************************************************************************
  * ** Function: change_dir()
- * ** Description: 
- * ** Parameters: Takes either zero or one parameter.
+ * ** Description: With no parameter specified, will change to the
+ *      directory specified in the HOME environment variable. Otherwise,
+ *      will change to the directory specified by the user-entered path.
+ * ** Parameters: Takes the directory name, which will either be NULL or
+ *      a directory path
  * *********************************************************************/
-void change_dir(){    
-    printf("Change dir called\n");
+void change_dir(char *args){   
+    //If directory specified, change to that directory
+    if(args[1] != NULL){
+        chdir(args[1]);
+    }
+    //Else, change to the HOME directory
+    else chdir(getenv("HOME"));
     return;
 }
 
@@ -245,17 +253,24 @@ int main(){
     sigaction(SIGINT, &SIGINT_action, NULL);
     sigaction(SIGSTP, &SIGSTP_action, NULL);
     
-    //Containers for input, command, args, and files
+    //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char user_input[MAX_LENGTH];
     char command[MAX_LENGTH];
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
+    int infile = -5;
+    int outfile = -5;
+    int exit_status = 0;
     bool run_in_backgrnd;
     bool valid;
-    int exit_status = 0;
     int i;
     bool exit_shell = false;
+
+    //Set each arg pointer to NULL
+    for(i = 0; i < MAX_ARGS; i++){
+        args[i] = NULL;
+    }
 
     //Run shell
     while(!exit_shell){
@@ -269,8 +284,6 @@ int main(){
         memset(out_file, '\0', sizeof(out_file));
         valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
         
-        //Fork/create child
-        //Handle I/O
         //If built-in command to run in foreground, execute and wait
         for(i = 0; i < 3; i++){
             if(strcmp(command, builtin_commands[i]) == 0){
@@ -279,8 +292,7 @@ int main(){
             }
         }
         
-        //Else, if in background, execute and don't wait
-        //Else, if not built-in, find command
+        //Else, if not built-in, fork, handle I/O, find command
             //If valid & foreground, execute and wait
             //If valid & background, execute and don't wait
             //Else, display error and set exit status to 1
