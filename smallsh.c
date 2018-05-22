@@ -118,6 +118,7 @@ void prompt(char *line){
  * *********************************************************************/
 bool process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
+    char pid[10]; //For converint the PID into a string
     int arg_ct = 0;
     //If string does not exist, is empty, or is a comment return false
     if(line == NULL || strlen(line) == 0 || line[0] == '#') return false;
@@ -146,13 +147,19 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
                 break;
             //Else, save in args[]
             default:
-                args[arg_ct++] = item;
+                //Expand process ID if needed
+                if(strcmp(item, "$$") == 0){
+                    memset(pid, '\0', sizeof(pid));
+                    snprintf(pid, 10, "%d", (int)getpid());
+                    args[arg_ct++] = pid;
+                    printf("$$ expanded to: %s\n", pid);
+                }
+                else args[arg_ct++] = item;
                 printf("arg added: %s\n", args[arg_ct - 1]);
         }
         item = strtok(NULL, " ");
     }
-    return;
-    
+    return true;
 }
 
 
@@ -163,11 +170,11 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
  *      processes started by the shell.
  * ** Parameters: None
  * *********************************************************************/
-bool exit(){    
+bool exit_shell(){    
     //Kill all jobs and processes
     //
     //Return true
-    return true;
+    return 1;
 }
 
 
@@ -193,6 +200,19 @@ void status(int exit_status){
     //If last foreground process terminated, print terminating signal
     //Else, print the current exit status
     printf("exit value %d\n", exit_status);
+    return;
+}
+
+
+/************************************************************************
+ * ** Function: execute_builtin()
+ * ** Description: Determines which built-in command was entered and
+ * executes the given command.
+ * ** Parameters: Takes the given command as a string, the array of args,
+ * and the in and out file names
+ * *********************************************************************/
+void execute_builtin(char *command, char *args[], char *in, char *out){
+
     return;
 }
 
@@ -230,15 +250,21 @@ int main(){
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
         valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
-        //If built-in command, execute
+        
+        //Fork/create child
+        //Handle I/O
+        //If built-in command to run in foreground, execute and wait
         for(i = 0; i < 3; i++){
             if(strcmp(command, builtin_commands[i]) == 0){
                 //Fork and execute built-in
+                printf("Executing built-in in the foreground\n");
             }
         }
         
+        //Else, if in background, execute and don't wait
         //Else, if not built-in, find command
-            //If valid, fork, handle I/O, execute
+            //If valid & foreground, execute and wait
+            //If valid & background, execute and don't wait
             //Else, display error and set exit status to 1
         //Clean up or wait for processes
         //Clean up containers
