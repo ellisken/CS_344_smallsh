@@ -47,19 +47,6 @@
 #define MAX_LENGTH 2048
 #define MAX_ARGS 512
 
-//Signal handling functions for CTRL-C and CTRL-Z
-//from lecture
-void catchSIGINT(int signo){
-    char *message = "SIGINT. Use CTRL-Z to Stop.\n";
-    write(STDOUT_FILENO, message, 28);
-}
-
-void catchSGSTP(int signo){
-    char *message = "SIGTSTP.\n";
-    write(STDOUT_FILENO, message, 9);
-    //exit(0);
-}
-
 
 
 
@@ -195,10 +182,10 @@ bool exit_shell(){
  * ** Parameters: Takes the directory name, which will either be NULL or
  *      a directory path
  * *********************************************************************/
-void change_dir(char *args){   
+void change_dir(char **args){   
     //If directory specified, change to that directory
-    if(args[1] != NULL){
-        chdir(args[1]);
+    if(args[0] != NULL){
+        chdir(args[0]);
     }
     //Else, change to the HOME directory
     else chdir(getenv("HOME"));
@@ -210,7 +197,8 @@ void change_dir(char *args){
 /************************************************************************
  * ** Function: status()
  * ** Description: Prints either the exit status or the terminating
- *      signal of the last foreground process run by the shell.
+ *      signal of the last foreground process run by the shell. From 
+ *      Benjamin Brewster's lecture.
  * ** Parameters: Takes either zero or one parameter.
  * *********************************************************************/
 void status(int exit_status){    
@@ -224,16 +212,17 @@ void status(int exit_status){
 }
 
 
-/************************************************************************
- * ** Function: execute_builtin()
- * ** Description: Determines which built-in command was entered and
- * executes the given command.
- * ** Parameters: Takes the given command as a string, the array of args,
- * and the in and out file names
- * *********************************************************************/
-void execute_builtin(char *command, char *args[], char *in, char *out){
+//Signal handling functions for CTRL-C and CTRL-Z
+//from lecture
+void catchSIGINT(int signo){
+    char *message = "Terminated by signal 2\n";
+    write(STDOUT_FILENO, message, 28);
+}
 
-    return;
+void catchSIGTSTP(int signo){
+    char *message = "SIGTSTP.\n";
+    write(STDOUT_FILENO, message, 9);
+    exit(0);
 }
 
 
@@ -242,16 +231,16 @@ void execute_builtin(char *command, char *args[], char *in, char *out){
  * ********************************************************************/
 int main(){
     //Define signal handling from lecture
-    struct sigaction SIGINT_action = {0}, SIGSTP_action = {0};
+    struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0};
     SIGINT_action.sa_handler = catchSIGINT;
     sigfillset(&SIGINT_action.sa_mask);//Block/delay all signals arriving
     SIGINT_action.sa_flags = 0;
 
-    SIGSTP_action.sa_handler = catchSIGSTP;
-    sigfillset(&SIGSTP_action.sa_mask);
-    SIGSTP_action.sa_flags = 0;
+    SIGTSTP_action.sa_handler = catchSIGTSTP;
+    sigfillset(&SIGTSTP_action.sa_mask);
+    SIGTSTP_action.sa_flags = 0;
     sigaction(SIGINT, &SIGINT_action, NULL);
-    sigaction(SIGSTP, &SIGSTP_action, NULL);
+    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
     
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
