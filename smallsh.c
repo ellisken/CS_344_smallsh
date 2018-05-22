@@ -163,13 +163,11 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
  *      processes started by the shell.
  * ** Parameters: None
  * *********************************************************************/
-void exit(bool *exit){    
+bool exit(){    
     //Kill all jobs and processes
     //
-    //Reset exit value to true
-    *exit = true;
-
-    return;
+    //Return true
+    return true;
 }
 
 
@@ -191,8 +189,10 @@ void change_dir(){
  * ** Description: 
  * ** Parameters: Takes either zero or one parameter.
  * *********************************************************************/
-void status(){    
-    printf("Status called\n");
+void status(int exit_status){    
+    //If last foreground process terminated, print terminating signal
+    //Else, print the current exit status
+    printf("exit value %d\n", exit_status);
     return;
 }
 
@@ -208,17 +208,19 @@ int main(){
     sigaction(SIGINT, &SIGINT_action, NULL);
     
     //Containers for input, command, args, and files
+    char *builtin_commands[3] = {"exit", "status", "cd"};
     char user_input[MAX_LENGTH];
     char command[MAX_LENGTH];
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
     bool run_in_backgrnd;
     bool valid;
+    int exit_status = 0;
     int i;
-    bool exit = false;
+    bool exit_shell = false;
 
     //Run shell
-    while(!exit){
+    while(!exit_shell){
         //Display prompt and get input
         memset(user_input, '\0', sizeof(user_input));
         prompt(user_input);
@@ -229,10 +231,16 @@ int main(){
         memset(out_file, '\0', sizeof(out_file));
         valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
         //If built-in command, execute
+        for(i = 0; i < 3; i++){
+            if(strcmp(command, builtin_commands[i]) == 0){
+                //Fork and execute built-in
+            }
+        }
         
         //Else, if not built-in, find command
             //If valid, fork, handle I/O, execute
             //Else, display error and set exit status to 1
+        //Clean up or wait for processes
         //Clean up containers
     }
     return 0;
