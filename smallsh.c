@@ -22,19 +22,6 @@
  * Change behavior of CTRL-C (SIGINT) and CTRL-Z to (SIGTSTP)
  *
  * */
-/* List of functions:
- * getInput()
- * processInput()
- * handleIO()
- * exit()
- * cd()
- * status()
- * Prompt()
- * execOther()
- * execBuiltIn()
- * error()
- * cleanup()
- * */
 
 #include <stdbool.h> //For bools
 #include <stdio.h>
@@ -43,12 +30,10 @@
 #include <signal.h>
 #include <unistd.h>
 #include <assert.h>
+#include <fcntl.h>
 
 #define MAX_LENGTH 2048
 #define MAX_ARGS 512
-
-
-
 
 /************************************************************************
  * ** Function: prompt()
@@ -87,16 +72,15 @@ bool prompt(char *line){
  * *********************************************************************/
 void process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
-    char pid[10]; //For converint the PID into a string
+    char pid[10]; //For converting the PID into a string
     int arg_ct = 0;
-    //If string does not exist, is empty, or is a comment return false
 
     //Else, tokenize string by spaces
     //First token is saved in "command"
     item = strtok(line, " ");
     strcpy(command, item);
     printf("Command: %s\n", command);
-    item = strtok(NULL, " ");
+    /*item = strtok(NULL, " ");
     while(item != NULL){
         switch(*item){
             //If token is "<" save next word in infile
@@ -126,7 +110,7 @@ void process_input(char *line, char *command, char *args[], char *in, char *out,
                 printf("arg added: %s\n", args[arg_ct - 1]);
         }
         item = strtok(NULL, " ");
-    }
+    }*/
     return;
 }
 
@@ -207,17 +191,20 @@ int main(){
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
-    char command[MAX_LENGTH];
+    char *command = malloc(sizeof(char) * MAX_LENGTH);
     char *args[MAX_ARGS];
-    char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
-    FILE *infile = NULL;
-    FILE *outfile = NULL;
-    int exit_status = 0;
+    char in_file[MAX_LENGTH], out_file[MAX_LENGTH];//For I/O file names
+    int infile = -1;
+    int outfile = -1;
+    int devnull = -1;//For redirecting background I/O to /dev/null
+    int exit_status;
     bool exit_shell = false;
-    bool run_in_backgrnd;
-    bool valid = false;
+    bool run_in_backgrnd; //Indicates background/foreground process
+    bool valid = false; //For input validation
+    int result; //For use with dup2()
     int i;
-    int cpid;//For storing child process ID
+    pid_t cpid, exit_pid;//For storing child process ID
+
 
     //Set each arg pointer to NULL
     for(i = 0; i < MAX_ARGS; i++){
@@ -232,7 +219,6 @@ int main(){
         }
         
         //Process input
-        memset(command, '\0', sizeof(command));
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
         process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
@@ -258,56 +244,90 @@ int main(){
         
         //Else, if not built-in, fork, handle I/O, find command
         else{
+            //Create fork
             cpid = fork();
             switch(cpid){
+                //If fork successful:
                 case 0:
-                    if(strcmp(in_file, "") != 0){
+                    //Check if foreground process, set to default SIG handling
+                    if(!run_in_backgrnd){
+                        SIGINT_action.sa_handler = SIG_DFL;
+                        sigaction(SIGINT, &SIGINT_action, NULL);
+                    }
+                    //Handle input file
+                    if(strcmp(in_file, "") != 0 && in_file != NULL){
                         printf("In file: %s\n", in_file);
                         //Open input file
-                        infile = fopen(in_file, "r");
+                        infile = open(in_file, O_RDONLY);
                         //Check opened correctly
-                        if(infile == NULL){
+                        if(infile == -1){
                             printf("cannot open %s for input\n", in_file);
                             fflush(stdout);
-                            exit_status = 1;
                             exit(1);
                         }
-                        fclose(infile);
                     }
                     //In-file redirection
+                    result =  dup2(infile, 0);
+                    if(result == -1){
+                        perror("dup2 in\n");
+                        exit(2);
+                    }
 
-                    if(strcmp(out_file, "") != 0){
+                    //Handle output file
+                    if(strcmp(out_file, "") != 0 && out_file != NULL){
                         printf("Out file: %s\n", out_file);
                         //Open output file for writing
-                        outfile = fopen(out_file, "w");
+                        outfile = open(out_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                         //Check opened correctly
-                        if(outfile == NULL){
-                            printf("cannot open %s\n", out_file);
+                        if(outfile == -1){
+                            printf("cannot open %s for output\n", out_file);
                             fflush(stdout);
-                            exit_status = 1;
+                            exit(1);
                         }
-                        fclose(outfile);
                     }
                     //Out-file redirection
+                    result = dup2(outfile, 1);
+                    if(result == -1){
+                        perror("dup2 out\n");
+                        exit(2);
+                    }
 
+                    //Execute the command
+                    execvp(command, args);
+                    perror(command);
+                    exit(1);
+                    break;
+                //If fork unsuccessful:
                 case -1:
-                    perror("fork");
-                    exit_status = 1;
+                    perror("fork error");
+                    exit(1);
                     break;
 
+                //Handle background/foreground 
                 default:
-                    printf("default selected\n");
-                    fflush(stdout);
+                    //Print background pid
+                    if(run_in_backgrnd == true){
+                        printf("background process id is: %d\n", cpid);
+                        fflush(stdout);
+                    }
+                    // -OR- wait for foreground process
+                    else{
+                        //Block the parent until the child with given pid
+                        //terminates
+                        exit_pid = waitpid(cpid, &exit_status, 0);
+                        //If waiting and terminated by SIGINT, notify the user
+                        if(exit_pid > 0 && WIFSIGNALED(exit_status)){
+                            printf("Terminated by signal %d\n", WTERMSIG(exit_status));
+                        }
+                    }
             }
             
         }
-            //If valid & foreground, execute and wait
-            //If valid & background, execute and don't wait
-            //Else, display error and set exit status to 1
         //Clean up or wait for processes
-        //Clean up containers
-        free(user_input);
     }
+    //Clean up containers
+    free(user_input);
+    free(command);
     return 0;
 }
 
