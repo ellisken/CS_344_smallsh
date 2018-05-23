@@ -77,20 +77,19 @@ void process_input(char *line, char *command, char *args[], char *in, char *out,
 
     //Else, tokenize string by spaces
     //First token is saved in "command"
-    item = strtok(line, " ");
+    item = strtok(line, " \n");
     strcpy(command, item);
-    printf("Command: %s\n", command);
-    /*item = strtok(NULL, " ");
+    item = strtok(NULL, " ");
     while(item != NULL){
         switch(*item){
             //If token is "<" save next word in infile
             case '<':
-                item = strtok(NULL, " ");
+                item = strtok(NULL, " \n");
                 strcpy(in, item);
                 break;
             //If token is ">" save next word in outfile
             case '>':
-                item = strtok(NULL, " ");
+                item = strtok(NULL, " \n");
                 strcpy(out, item);
                 break;
             //If token is "&", change value of run_in_background
@@ -109,8 +108,8 @@ void process_input(char *line, char *command, char *args[], char *in, char *out,
                 else args[arg_ct++] = item;
                 printf("arg added: %s\n", args[arg_ct - 1]);
         }
-        item = strtok(NULL, " ");
-    }*/
+        item = strtok(NULL, " \n");
+    }
     return;
 }
 
@@ -222,6 +221,7 @@ int main(){
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
         process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
+        printf("Command: %s\n", command);
 
         
         //If built-in command to run in foreground, execute 
@@ -254,7 +254,7 @@ int main(){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
                     }
-                    //Handle input file
+                    /*//Handle input file
                     if(strcmp(in_file, "") != 0 && in_file != NULL){
                         printf("In file: %s\n", in_file);
                         //Open input file
@@ -290,7 +290,7 @@ int main(){
                     if(result == -1){
                         perror("dup2 out\n");
                         exit(2);
-                    }
+                    }*/
 
                     //Execute the command
                     execvp(command, args);
@@ -324,6 +324,7 @@ int main(){
             
         }
         //Clean up or wait for processes
+        valid = false;
     }
     //Clean up containers
     free(user_input);
