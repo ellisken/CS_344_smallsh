@@ -162,10 +162,12 @@ void change_dir(char **args){
 void status(int exit_status){    
     //If exit status, print exit value
     if(WIFEXITED(exit_status)){
-        printf("exit value %i\n", WEXITSTATUS(exit_status));
+        printf("exit value %d\n", WEXITSTATUS(exit_status));
     }
     //Else, print terminating signal of last process
-    else printf("terminated by signal %i\n", exit_status);
+    else{
+        printf("terminated by signal %d\n", WTERMSIG(exit_status));
+    }
     return;
 }
 
