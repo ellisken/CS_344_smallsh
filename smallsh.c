@@ -58,46 +58,20 @@
  * ** Note: Code for this function largely based on Benjamin Brewster's
  *      getline() example on page 3.3 of CS 344 Block 3.
  * *********************************************************************/
-void prompt(char *line){
-    size_t buffer_size = 0;
-    char *input = NULL;
-    int char_ct = 0; //For checking getline() success
-    char* string_endpt; //For removing whitespace 
-   
-    while(1){
-        //Prompt
-        printf(": ");
-        fflush(stdout);
+bool prompt(char *line){
+    //Prompt
+    printf(": ");
+    fflush(stdout);
+
+    //Get input
+    fgets(line, MAX_LENGTH, stdin);
         
-        //Get input
-        char_ct = getline(&input, &buffer_size, stdin);
-
-        //Check for getline() interruption error and clear error status
-        if(char_ct == -1){
-            clearerr(stdin);
-            char_ct = 0;
-        }
-        else break;
+    //If comment or blank line, return false
+    if(line[0] == '#' || line[0] == '\n'){
+        return false;
     }
 
-    //Find start of string (skip leading whitespace)
-    string_endpt = &input[strspn(input, " \t\n")];
-    //Reassign input to new starting point
-    input = string_endpt;
-    //Get string length and find actual endpoint,
-    //strip trailing whitespace
-    string_endpt = input + strlen(input);
-    while(isspace(*--string_endpt))
-        *(string_endpt + 1) = '\0';
-    //Take care of last whitespace char
-    *(string_endpt + 1) = '\0';
-    //Do not copy if error or blank line
-    if(input == NULL || strlen(input) == 0) return;
-    else{ 
-        strcpy(line, input);
-        free(input);
-    }
-    return;
+    else return true;
 }
 
 
@@ -111,12 +85,11 @@ void prompt(char *line){
  *      strings to hold names of infile & outfile, bool for background
  *      process option.
  * *********************************************************************/
-bool process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
+void process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
     char pid[10]; //For converint the PID into a string
     int arg_ct = 0;
     //If string does not exist, is empty, or is a comment return false
-    if(line == NULL || strlen(line) == 0 || line[0] == '#') return false;
 
     //Else, tokenize string by spaces
     //First token is saved in "command"
@@ -154,22 +127,6 @@ bool process_input(char *line, char *command, char *args[], char *in, char *out,
         }
         item = strtok(NULL, " ");
     }
-    return true;
-}
-
-
-
-/************************************************************************
- * ** Function: exit_shell()
- * ** Description: Immediately exits the shell and kills all jobs or
- *      processes started by the shell.
- * ** Parameters: None
- * *********************************************************************/
-void exit_shell(){    
-    //Kill all jobs and processes
-    //
-    //Return true
-    exit(0);
     return;
 }
 
@@ -216,8 +173,10 @@ void status(int exit_status){
 //Signal handling functions for CTRL-C and CTRL-Z
 //from lecture
 void catchSIGINT(int signo){
-    char *message = "Terminated by signal 2\n";
-    write(STDOUT_FILENO, message, 23);
+    //Must show number of signal that killed any foreground child
+    //process, child process must terminate itself
+    char *message = "SIGINT.\n";
+    write(STDOUT_FILENO, message, 8);
 }
 
 void catchSIGTSTP(int signo){
@@ -245,17 +204,18 @@ int main(){
     
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
-    char user_input[MAX_LENGTH];
+    char *user_input = malloc(sizeof(char) * MAX_LENGTH);
     char command[MAX_LENGTH];
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];
-    int infile = -5;
-    int outfile = -5;
+    FILE *infile = NULL;
+    FILE *outfile = NULL;
     int exit_status = 0;
+    bool exit_shell = false;
     bool run_in_backgrnd;
-    bool valid;
+    bool valid = false;
     int i;
-    //bool exit_shell = false;
+    int cpid;//For storing child process ID
 
     //Set each arg pointer to NULL
     for(i = 0; i < MAX_ARGS; i++){
@@ -263,39 +223,88 @@ int main(){
     }
 
     //Run shell
-    while(1){
-        //Display prompt and get input
-        memset(user_input, '\0', sizeof(user_input));
-        prompt(user_input);
-        fflush(stdout);
+    while(!exit_shell){
+        //Display prompt and get valid input
+        while(!valid){
+            valid = prompt(user_input);
+        }
+        
         //Process input
         memset(command, '\0', sizeof(command));
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
-        valid = process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
+        process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
 
         
         //If built-in command to run in foreground, execute 
         if(strcmp(command, "status") == 0){      
             printf("status chosen\n");
+            fflush(stdout);
             status(exit_status);
         }
         else if(strcmp(command, "cd") == 0){
             printf("cd chosen\n");
+            fflush(stdout);
             change_dir(args);
         }
         else if(strcmp(command, "exit") == 0){
             printf("exit chosen\n");
-            exit_shell();
+            fflush(stdout);
+            exit_shell = true;
         }
     
         
         //Else, if not built-in, fork, handle I/O, find command
+        else{
+            cpid = fork();
+            switch(cpid){
+                case 0:
+                    if(strcmp(in_file, "") != 0){
+                        printf("In file: %s\n", in_file);
+                        //Open input file
+                        infile = fopen(in_file, "r");
+                        //Check opened correctly
+                        if(infile == NULL){
+                            printf("cannot open %s for input\n", in_file);
+                            fflush(stdout);
+                            exit_status = 1;
+                            exit(1);
+                        }
+                        fclose(infile);
+                    }
+                    //In-file redirection
+
+                    if(strcmp(out_file, "") != 0){
+                        printf("Out file: %s\n", out_file);
+                        //Open output file for writing
+                        outfile = fopen(out_file, "w");
+                        //Check opened correctly
+                        if(outfile == NULL){
+                            printf("cannot open %s\n", out_file);
+                            fflush(stdout);
+                            exit_status = 1;
+                        }
+                        fclose(outfile);
+                    }
+                    //Out-file redirection
+
+                case -1:
+                    perror("fork");
+                    exit_status = 1;
+                    break;
+
+                default:
+                    printf("default selected\n");
+                    fflush(stdout);
+            }
+            
+        }
             //If valid & foreground, execute and wait
             //If valid & background, execute and don't wait
             //Else, display error and set exit status to 1
         //Clean up or wait for processes
         //Clean up containers
+        free(user_input);
     }
     return 0;
 }
