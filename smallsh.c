@@ -70,9 +70,8 @@ bool prompt(char *line){
  *      strings to hold names of infile & outfile, bool for background
  *      process option.
  * *********************************************************************/
-void process_input(char *line, char *args[], char *in, char *out, bool *backgrnd){
+void process_input(char *line, char *pid, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
-    char pid[10]; //For converting the PID into a string
     int arg_ct = 0;
 
     //Else, tokenize string by spaces
@@ -100,13 +99,17 @@ void process_input(char *line, char *args[], char *in, char *out, bool *backgrnd
             default:
                 //Expand process ID if needed
                 if(strcmp(item, "$$") == 0){
-                    memset(pid, '\0', sizeof(pid));
+                    //memset(pid, '\0', sizeof(pid));
                     snprintf(pid, 10, "%d", (int)getpid());
                     args[arg_ct++] = pid;
                     printf("$$ expanded to: %s\n", pid);
+                    fflush(stdout);
                 }
-                else args[arg_ct++] = item;
-                printf("arg added: %s\n", args[arg_ct - 1]);
+                else{
+                    args[arg_ct++] = item;
+                    printf("arg added: %s\n", args[arg_ct - 1]);
+                    fflush(stdout);
+                }
         }
         item = strtok(NULL, " \n");
     }
@@ -190,7 +193,7 @@ int main(){
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
-    //char *command = malloc(sizeof(char) * MAX_LENGTH);
+    char *pid = malloc(sizeof(char) * 10); //For converting the PID into a string
     char *cwd = malloc(sizeof(char) * MAX_LENGTH);
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];//For I/O file names
@@ -225,7 +228,7 @@ int main(){
         for(i = 0; i < MAX_ARGS; i++){
             args[i] = NULL;
         }
-        process_input(user_input, args, in_file, out_file, &run_in_backgrnd);
+        process_input(user_input, pid, args, in_file, out_file, &run_in_backgrnd);
         printf("Command: %s\n", args[0]);
             printf("%s\n", getcwd(cwd, MAX_LENGTH));
 
@@ -334,7 +337,7 @@ int main(){
     }
     //Clean up containers
     free(user_input);
-    //free(command);
+    free(pid);
     return 0;
 }
 
