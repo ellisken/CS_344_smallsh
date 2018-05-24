@@ -35,10 +35,15 @@
 #define MAX_LENGTH 2048
 #define MAX_ARGS 512
 
+//Global variable for controlling foreground-only mode,
+//Changed by the SIGTSTP handling function
+bool no_backgrnd = false; //Default value is false
+
 /************************************************************************
  * ** Function: prompt()
  * ** Description: Displays the shell prompt ":" and receives user input;
- *      Strips user input of leading and trailing whitespace.
+ *      Returns true if valid input, otherwise returns false if comment
+ *      or blank line.
  * ** Parameters: None
  * *********************************************************************/
 bool prompt(char *line){
@@ -183,6 +188,13 @@ void check_background(){
 
 //Signal handling functions for CTRL-C and CTRL-Z
 //from lecture
+/************************************************************************
+ * ** Function: check_background()
+ * ** Description: Checks for the background child processes that have
+ *      finished. If a process has terminated, displays a message
+ *      showing the process id and exit status.
+ * ** Parameters: int for retrieving the exit or termnation status.
+ * *********************************************************************/
 void catchSIGINT(int signo){
     //Must show number of signal that killed any foreground child
     //process, child process must terminate itself
@@ -190,10 +202,27 @@ void catchSIGINT(int signo){
     write(STDOUT_FILENO, message, 8);
 }
 
+
+
+/************************************************************************
+ * ** Function: catchSIGTSTP()
+ * ** Description: Catchable by the shell only. Turns foreground-only
+ *      mode on or off depending on value of global variable 
+ *      "no_backgrnd"
+ * *********************************************************************/
 void catchSIGTSTP(int signo){
-    char *message = "SIGTSTP.\n";
-    write(STDOUT_FILENO, message, 9);
-    exit(0);
+    char *foreground_on = "\nEntering foreground-only mode (& is now ignored)\n";
+    char *foreground_off = "\nExiting foreground-only mode\n";
+    //If no_backgrnd is false, turn foreground-only mode on
+    if(no_backgrnd == false){
+        write(STDOUT_FILENO, foreground_on, 49);
+        no_backgrnd = true;
+    }
+    //Else, turn foreground-only mode off
+    else{
+        write(STDOUT_FILENO, foreground_off, 30);
+        no_backgrnd = false;
+    }
 }
 
 
@@ -201,16 +230,16 @@ void catchSIGTSTP(int signo){
  *                                 MAIN
  * ********************************************************************/
 int main(){
-    //Define signal handling from lecture
+    //Define signal handling
     struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0};
     SIGINT_action.sa_handler = catchSIGINT;
     sigfillset(&SIGINT_action.sa_mask);//Block/delay all signals arriving
     SIGINT_action.sa_flags = 0;
+    sigaction(SIGINT, &SIGINT_action, NULL);
 
     SIGTSTP_action.sa_handler = catchSIGTSTP;
     sigfillset(&SIGTSTP_action.sa_mask);
     SIGTSTP_action.sa_flags = 0;
-    sigaction(SIGINT, &SIGINT_action, NULL);
     sigaction(SIGTSTP, &SIGTSTP_action, NULL);
     
     //Containers for input, command, args, files, etc.
@@ -269,11 +298,12 @@ int main(){
             switch(cpid){
                 //If fork successful:
                 case 0:
-                    //If foreground process, set to default SIGINT handling
-                    if(!run_in_backgrnd){
+                    /*//If foreground process or foreground-only mode,
+                    //set to default SIGINT handling
+                    if(!run_in_backgrnd || no_backgrnd){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
-                    }
+                    }*/
                     //Handle input file
                     if(strcmp(in_file, "") != 0 && in_file != NULL){
                         //Open input file
@@ -291,9 +321,10 @@ int main(){
                             exit(2);
                         }
                     }
-                    //If background process and input file not specified, 
+                    //If background process, foreground-only mode
+                    //is disabled, and input file not specified, 
                     //redirect to /dev/null
-                    else if(run_in_backgrnd){
+                    else if(run_in_backgrnd && !no_backgrnd){
                         devnull = open("/dev/null", O_WRONLY);
                         if(devnull == -1){
                             printf("cannot open /dev/null for output\n");
@@ -325,9 +356,9 @@ int main(){
                         }
                     }
                     
-                    //If background process and output file not specified, 
-                    //redirect to /dev/null
-                    else if(run_in_backgrnd){
+                    //If background process, not in foreground-only mode,
+                    //and output file not specified, redirect to /dev/null
+                    else if(run_in_backgrnd && !no_backgrnd){
                         devnull = open("/dev/null", O_WRONLY);
                         if(devnull == -1){
                             printf("cannot open /dev/null for input\n");
@@ -357,7 +388,7 @@ int main(){
                 //Handle background/foreground 
                 default:
                     //Print background pid
-                    if(run_in_backgrnd == true){
+                    if(run_in_backgrnd && !no_backgrnd){
                         printf("background process id is: %d\n", cpid);
                         fflush(stdout);
                     }
