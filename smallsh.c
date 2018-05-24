@@ -240,7 +240,6 @@ int main(){
             printf("cd chosen\n");
             fflush(stdout);
             change_dir(args);
-            printf("%s\n", getcwd(cwd, MAX_LENGTH));
         }
         else if(strcmp(args[0], "exit") == 0){
             printf("exit chosen\n");
@@ -261,7 +260,7 @@ int main(){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
                     }
-                    /*//Handle input file
+                    //Handle input file
                     if(strcmp(in_file, "") != 0 && in_file != NULL){
                         printf("In file: %s\n", in_file);
                         //Open input file
@@ -272,12 +271,12 @@ int main(){
                             fflush(stdout);
                             exit(1);
                         }
-                    }
-                    //In-file redirection
-                    result =  dup2(infile, 0);
-                    if(result == -1){
-                        perror("dup2 in\n");
-                        exit(2);
+                        //In-file redirection
+                        result =  dup2(infile, 0);
+                        if(result == -1){
+                            perror("dup2 in\n");
+                            exit(2);
+                        }
                     }
 
                     //Handle output file
@@ -291,16 +290,15 @@ int main(){
                             fflush(stdout);
                             exit(1);
                         }
+                        //Out-file redirection
+                        result = dup2(outfile, 1);
+                        if(result == -1){
+                            perror("dup2 out\n");
+                            exit(2);
+                        }
                     }
-                    //Out-file redirection
-                    result = dup2(outfile, 1);
-                    if(result == -1){
-                        perror("dup2 out\n");
-                        exit(2);
-                    }*/
 
                     //Execute the command
-            printf("pre exec %s\n", getcwd(cwd, MAX_LENGTH));
                     execvp(args[0], args);
                     perror(args[0]);
                     exit(1);
