@@ -153,6 +153,34 @@ void status(int exit_status){
 }
 
 
+
+/************************************************************************
+ * ** Function: check_background()
+ * ** Description: Checks for the background child processes that have
+ *      finished. If a process has terminated, displays a message
+ *      showing the process id and exit status.
+ * ** Parameters: int for retrieving the exit or termnation status.
+ * *********************************************************************/
+void check_background(){
+    pid_t cpid; //For storing the terminated process's id
+    int signal; //For storing exit status
+    
+    //Wait for any child process, return immediately if none have exited
+    cpid = waitpid(-1, &signal, WNOHANG);
+    while(cpid > 0){
+        //Show PID of exited process
+        printf("background pid %d is done: ", cpid);
+        fflush(stdout);
+        //If exited, show exit status,
+        //Else, show terminating signal
+        status(signal);
+        cpid = waitpid(-1, &signal, WNOHANG);
+    }
+    return;
+}
+
+
+
 //Signal handling functions for CTRL-C and CTRL-Z
 //from lecture
 void catchSIGINT(int signo){
@@ -203,14 +231,10 @@ int main(){
     int i;
     pid_t cpid, exit_pid;//For storing process IDs
 
-
-    /*//Set each arg pointer to NULL
-    for(i = 0; i < MAX_ARGS; i++){
-        args[i] = NULL;
-    }*/
-
     //Run shell
     while(!exit_shell){
+        //Check for background child processes and clean up
+        check_background();
         //Display prompt and get valid input
         while(!valid){
             valid = prompt(user_input);
@@ -323,6 +347,7 @@ int main(){
                     perror(args[0]);
                     exit(1);
                     break;
+
                 //If fork unsuccessful:
                 case -1:
                     perror("fork error");
@@ -347,15 +372,15 @@ int main(){
                         }
                     }
             }
-            
         }
-        //Clean up or wait for processes
+        //Reset valid input and run_in_backgrnd variables
         valid = false;
         run_in_backgrnd = false;
     }
     //Clean up containers
     free(user_input);
     free(pid);
+    
     return 0;
 }
 
