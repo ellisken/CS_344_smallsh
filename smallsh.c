@@ -23,7 +23,7 @@
  *
  * */
 
-#include <stdbool.h> //For bools
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -40,8 +40,6 @@
  * ** Description: Displays the shell prompt ":" and receives user input;
  *      Strips user input of leading and trailing whitespace.
  * ** Parameters: None
- * ** Note: Code for this function largely based on Benjamin Brewster's
- *      getline() example on page 3.3 of CS 344 Block 3.
  * *********************************************************************/
 bool prompt(char *line){
     //Prompt
@@ -62,13 +60,11 @@ bool prompt(char *line){
 
 /************************************************************************
  * ** Function: process_input()
- * ** Description: Parses user input into command, args, and background 
- *      "&" option. Returns true if successful, returns false if input
- *      is a comment line (starts with "#") or blank. Does not check
- *      for correct user input syntax (space delimited).
+ * ** Description: Parses user input into args (where arg[0] is
+ *      the user-entered command), and background "&" option. 
  * ** Parameters: User input string, array of pointers to store args,
  *      strings to hold names of infile & outfile, bool for background
- *      process option.
+ *      process option, pointer to char to store parent PID.
  * *********************************************************************/
 void process_input(char *line, char *pid, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
@@ -107,7 +103,6 @@ void process_input(char *line, char *pid, char *args[], char *in, char *out, boo
                 }
                 else{
                     args[arg_ct++] = item;
-                    printf("arg added: %s\n", args[arg_ct - 1]);
                     fflush(stdout);
                 }
         }
@@ -143,7 +138,7 @@ void change_dir(char **args){
  * ** Description: Prints either the exit status or the terminating
  *      signal of the last foreground process run by the shell. From 
  *      Benjamin Brewster's lecture.
- * ** Parameters: Takes either zero or one parameter.
+ * ** Parameters: int for retrieving the exit or termnation status.
  * *********************************************************************/
 void status(int exit_status){    
     //If exit status, print exit value
@@ -194,25 +189,25 @@ int main(){
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
     char *pid = malloc(sizeof(char) * 10); //For converting the PID into a string
-    char *cwd = malloc(sizeof(char) * MAX_LENGTH);
+    //char *cwd = malloc(sizeof(char) * MAX_LENGTH);
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];//For I/O file names
     int infile = -1;
     int outfile = -1;
     int devnull = -1;//For redirecting background I/O to /dev/null
     int exit_status;
-    bool exit_shell = false;
+    bool exit_shell = false;//Control prompt loop
     bool run_in_backgrnd; //Indicates background/foreground process
     bool valid = false; //For input validation
     int result; //For use with dup2()
     int i;
-    pid_t cpid, exit_pid;//For storing child process ID
+    pid_t cpid, exit_pid;//For storing process IDs
 
 
-    //Set each arg pointer to NULL
+    /*//Set each arg pointer to NULL
     for(i = 0; i < MAX_ARGS; i++){
         args[i] = NULL;
-    }
+    }*/
 
     //Run shell
     while(!exit_shell){
@@ -220,33 +215,25 @@ int main(){
         while(!valid){
             valid = prompt(user_input);
         }
-        
-        //Process input
+
+        //Prepare containers for input   
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
         //Set each arg pointer to NULL
         for(i = 0; i < MAX_ARGS; i++){
             args[i] = NULL;
         }
+        //Process input
         process_input(user_input, pid, args, in_file, out_file, &run_in_backgrnd);
-        printf("Command: %s\n", args[0]);
-            printf("%s\n", getcwd(cwd, MAX_LENGTH));
-
         
         //If built-in command to run in foreground, execute 
         if(strcmp(args[0], "status") == 0){      
-            printf("status chosen\n");
-            fflush(stdout);
             status(exit_status);
         }
         else if(strcmp(args[0], "cd") == 0){
-            printf("cd chosen\n");
-            fflush(stdout);
             change_dir(args);
         }
         else if(strcmp(args[0], "exit") == 0){
-            printf("exit chosen\n");
-            fflush(stdout);
             exit_shell = true;
         }
     
@@ -258,14 +245,13 @@ int main(){
             switch(cpid){
                 //If fork successful:
                 case 0:
-                    //Check if foreground process, set to default SIG handling
+                    //If foreground process, set to default SIGINT handling
                     if(!run_in_backgrnd){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
                     }
                     //Handle input file
                     if(strcmp(in_file, "") != 0 && in_file != NULL){
-                        printf("In file: %s\n", in_file);
                         //Open input file
                         infile = open(in_file, O_RDONLY);
                         //Check opened correctly
@@ -281,10 +267,24 @@ int main(){
                             exit(2);
                         }
                     }
-
+                    //If background process and input file not specified, 
+                    //redirect to /dev/null
+                    else if(run_in_backgrnd){
+                        devnull = open("/dev/null", O_WRONLY);
+                        if(devnull == -1){
+                            printf("cannot open /dev/null for output\n");
+                            fflush(stdout);
+                            exit(1);
+                        }
+                        //Redirect
+                        result = dup2(devnull, 0);
+                        if(result == -1){
+                            perror("dup2 in>/dev/null\n");
+                            exit(2);
+                        }
+                    }
                     //Handle output file
                     if(strcmp(out_file, "") != 0 && out_file != NULL){
-                        printf("Out file: %s\n", out_file);
                         //Open output file for writing
                         outfile = open(out_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                         //Check opened correctly
@@ -297,6 +297,23 @@ int main(){
                         result = dup2(outfile, 1);
                         if(result == -1){
                             perror("dup2 out\n");
+                            exit(2);
+                        }
+                    }
+                    
+                    //If background process and output file not specified, 
+                    //redirect to /dev/null
+                    else if(run_in_backgrnd){
+                        devnull = open("/dev/null", O_WRONLY);
+                        if(devnull == -1){
+                            printf("cannot open /dev/null for input\n");
+                            fflush(stdout);
+                            exit(1);
+                        }
+                        //Redirect
+                        result = dup2(devnull, 1);
+                        if(result == -1){
+                            perror("dup2 in>/dev/null\n");
                             exit(2);
                         }
                     }
@@ -334,6 +351,7 @@ int main(){
         }
         //Clean up or wait for processes
         valid = false;
+        run_in_backgrnd = false;
     }
     //Clean up containers
     free(user_input);
