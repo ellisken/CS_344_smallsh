@@ -70,16 +70,16 @@ bool prompt(char *line){
  *      strings to hold names of infile & outfile, bool for background
  *      process option.
  * *********************************************************************/
-void process_input(char *line, char *command, char *args[], char *in, char *out, bool *backgrnd){
+void process_input(char *line, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
     char pid[10]; //For converting the PID into a string
     int arg_ct = 0;
 
     //Else, tokenize string by spaces
     //First token is saved in "command"
+    //item = strtok(line, " \n");
+    //strcpy(command, item);
     item = strtok(line, " \n");
-    strcpy(command, item);
-    item = strtok(NULL, " ");
     while(item != NULL){
         switch(*item){
             //If token is "<" save next word in infile
@@ -125,8 +125,8 @@ void process_input(char *line, char *command, char *args[], char *in, char *out,
  * *********************************************************************/
 void change_dir(char **args){   
     //If directory specified, change to that directory
-    if(args[0] != NULL){
-        chdir(args[0]);
+    if(args[1] != NULL){
+        chdir(args[1]);
     }
     //Else, change to the HOME directory
     else chdir(getenv("HOME"));
@@ -190,7 +190,8 @@ int main(){
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
-    char *command = malloc(sizeof(char) * MAX_LENGTH);
+    //char *command = malloc(sizeof(char) * MAX_LENGTH);
+    char *cwd = malloc(sizeof(char) * MAX_LENGTH);
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];//For I/O file names
     int infile = -1;
@@ -220,22 +221,28 @@ int main(){
         //Process input
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
-        process_input(user_input, command, args, in_file, out_file, &run_in_backgrnd);
-        printf("Command: %s\n", command);
+        //Set each arg pointer to NULL
+        for(i = 0; i < MAX_ARGS; i++){
+            args[i] = NULL;
+        }
+        process_input(user_input, args, in_file, out_file, &run_in_backgrnd);
+        printf("Command: %s\n", args[0]);
+            printf("%s\n", getcwd(cwd, MAX_LENGTH));
 
         
         //If built-in command to run in foreground, execute 
-        if(strcmp(command, "status") == 0){      
+        if(strcmp(args[0], "status") == 0){      
             printf("status chosen\n");
             fflush(stdout);
             status(exit_status);
         }
-        else if(strcmp(command, "cd") == 0){
+        else if(strcmp(args[0], "cd") == 0){
             printf("cd chosen\n");
             fflush(stdout);
             change_dir(args);
+            printf("%s\n", getcwd(cwd, MAX_LENGTH));
         }
-        else if(strcmp(command, "exit") == 0){
+        else if(strcmp(args[0], "exit") == 0){
             printf("exit chosen\n");
             fflush(stdout);
             exit_shell = true;
@@ -293,8 +300,9 @@ int main(){
                     }*/
 
                     //Execute the command
-                    execvp(command, args);
-                    perror(command);
+            printf("pre exec %s\n", getcwd(cwd, MAX_LENGTH));
+                    execvp(args[0], args);
+                    perror(args[0]);
                     exit(1);
                     break;
                 //If fork unsuccessful:
@@ -328,7 +336,7 @@ int main(){
     }
     //Clean up containers
     free(user_input);
-    free(command);
+    //free(command);
     return 0;
 }
 
