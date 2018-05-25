@@ -291,7 +291,7 @@ int main(){
             cpid = fork();
 
             //Start ignorning SIGTSTP in child
-            sigaction(SIGTSTP, &SIGTSTP_ignore, NULL);
+            //sigaction(SIGTSTP, &SIGTSTP_ignore, NULL);
             
             switch(cpid){
                 //If fork successful:
