@@ -52,10 +52,11 @@ bool prompt(char *line){
     fflush(stdout);
 
     //Get input
+    line[0] = '\0';
     fgets(line, MAX_LENGTH, stdin);
         
     //If comment or blank line, return false
-    if(line[0] == '#' || line[0] == '\n'){
+    if(line[0] == '#' || line[0] == '\n' || line[0] == '\0'){
         return false;
     }
 
@@ -199,7 +200,7 @@ void catchSIGTSTP(int signo){
     char *foreground_off = "\nExiting foreground-only mode\n";
     //If no_backgrnd is false, turn foreground-only mode on
     if(no_backgrnd == false){
-        write(STDOUT_FILENO, foreground_on, 49);
+        write(STDOUT_FILENO, foreground_on, 50);
         fflush(stdout);
         no_backgrnd = true;
     }
@@ -217,17 +218,23 @@ void catchSIGTSTP(int signo){
  * ********************************************************************/
 int main(){
     //Define signal handling
-    struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0};
+    struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0}, SIGTSTP_ignore = {0};
     SIGINT_action.sa_handler = SIG_IGN;//Set up to ignore signals
     sigfillset(&SIGINT_action.sa_mask);//Block/delay all signals arriving
     SIGINT_action.sa_flags = 0;
     sigaction(SIGINT, &SIGINT_action, NULL);
 
+    //Define struct for handling SIGTSTP
     SIGTSTP_action.sa_handler = catchSIGTSTP;
     sigfillset(&SIGTSTP_action.sa_mask);
     SIGTSTP_action.sa_flags = 0;
-    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
     
+    //Define struct for ignoring SIGTSTP
+    SIGTSTP_ignore.sa_handler = SIG_IGN;
+    sigfillset(&SIGTSTP_ignore.sa_mask);
+    SIGTSTP_ignore.sa_flags = 0;
+    
+
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
@@ -247,6 +254,10 @@ int main(){
 
     //Run shell
     while(!exit_shell){
+
+        //Catch and handle SIGTSTP
+        sigaction(SIGTSTP, &SIGTSTP_action, NULL);
+
         //Display prompt and get valid input
         while(!valid){
             valid = prompt(user_input);
@@ -278,6 +289,10 @@ int main(){
         else{
             //Create fork
             cpid = fork();
+
+            //Start ignorning SIGTSTP in child
+            sigaction(SIGTSTP, &SIGTSTP_ignore, NULL);
+            
             switch(cpid){
                 //If fork successful:
                 case 0:
@@ -287,6 +302,7 @@ int main(){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
                     }
+                    
                     //Handle input file
                     if(strcmp(in_file, "") != 0 && in_file != NULL){
                         //Open input file
