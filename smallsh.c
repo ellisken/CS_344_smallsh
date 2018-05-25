@@ -75,6 +75,7 @@ bool prompt(char *line){
 void process_input(char *line, char *pid, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
     int arg_ct = 0;
+    char *ptr;
 
     //Else, tokenize string by spaces
     //First token is saved in "command"
@@ -100,16 +101,28 @@ void process_input(char *line, char *pid, char *args[], char *in, char *out, boo
             //Else, save in args[]
             default:
                 //Expand process ID if needed
-                if(strcmp(item, "$$") == 0){
+                /*if(strcmp(item, "$$") == 0){
                     //memset(pid, '\0', sizeof(pid));
                     snprintf(pid, 10, "%d", (int)getpid());
                     args[arg_ct++] = pid;
                     printf("$$ expanded to: %s\n", pid);
                     fflush(stdout);
+                }*/
+                //If item includes $$, find starting point of $$
+                if(strstr(item, "$$")){
+                    ptr = strstr(item, "$$");
+                    *ptr = '%';
+                    ptr++;
+                    *ptr = 'd';
+                    sprintf(pid, item, getpid());
+                    args[arg_ct++] = pid;
                 }
+
+                //Replace with %d
+                //Create new string with sprintf()
+                //Add string to args
                 else{
                     args[arg_ct++] = item;
-                    fflush(stdout);
                 }
         }
         item = strtok(NULL, " \n");
