@@ -198,6 +198,7 @@ void check_background(){
 void catchSIGTSTP(int signo){
     char *foreground_on = "\nEntering foreground-only mode (& is now ignored)\n";
     char *foreground_off = "\nExiting foreground-only mode\n";
+
     //If no_backgrnd is false, turn foreground-only mode on
     if(no_backgrnd == false){
         write(STDOUT_FILENO, foreground_on, 50);
@@ -213,12 +214,13 @@ void catchSIGTSTP(int signo){
 }
 
 
+
 /***********************************************************************
  *                                 MAIN
  * ********************************************************************/
 int main(){
     //Define signal handling
-    struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0}, SIGTSTP_ignore = {0};
+    struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0};
     SIGINT_action.sa_handler = SIG_IGN;//Set up to ignore signals
     sigfillset(&SIGINT_action.sa_mask);//Block/delay all signals arriving
     SIGINT_action.sa_flags = 0;
@@ -228,13 +230,12 @@ int main(){
     SIGTSTP_action.sa_handler = catchSIGTSTP;
     sigfillset(&SIGTSTP_action.sa_mask);
     SIGTSTP_action.sa_flags = 0;
-    
-    //Define struct for ignoring SIGTSTP
-    SIGTSTP_ignore.sa_handler = SIG_IGN;
-    sigfillset(&SIGTSTP_ignore.sa_mask);
-    SIGTSTP_ignore.sa_flags = 0;
-    
+    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
+    sigset_t signals;
+    sigemptyset(&signals);
+    sigaddset(&signals, SIGTSTP);
+    
     //Containers for input, command, args, files, etc.
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
@@ -255,8 +256,6 @@ int main(){
     //Run shell
     while(!exit_shell){
 
-        //Catch and handle SIGTSTP
-        sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
         //Display prompt and get valid input
         while(!valid){
@@ -289,13 +288,13 @@ int main(){
         else{
             //Create fork
             cpid = fork();
-
-            //Start ignorning SIGTSTP in child
-            //sigaction(SIGTSTP, &SIGTSTP_ignore, NULL);
-            
             switch(cpid){
                 //If fork successful:
                 case 0:
+                    //Ignore SIGTSTP in child process
+                    SIGTSTP_action.sa_handler = SIG_IGN;
+                    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
+
                     //If foreground process or foreground-only mode,
                     //set to default SIGINT handling
                     if(!run_in_backgrnd || no_backgrnd){
@@ -395,6 +394,8 @@ int main(){
                     }
                     // -OR- wait for foreground process
                     else{
+                        //Block SIGTSTP until waitpid finishes
+                        sigprocmask(SIG_BLOCK, &signals, NULL);
                         //Block the parent until the child with given pid
                         //terminates
                         exit_pid = waitpid(cpid, &exit_status, 0);
@@ -404,6 +405,8 @@ int main(){
                             fflush(stdout);
                         }
                     }
+                    //unblock SIGTSTP signals
+                    sigprocmask(SIG_UNBLOCK, &signals, NULL);
             }
         }
         //Reset valid input and run_in_backgrnd variables
