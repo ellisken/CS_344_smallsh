@@ -186,24 +186,6 @@ void check_background(){
 
 
 
-//Signal handling functions for CTRL-C and CTRL-Z
-//from lecture
-/************************************************************************
- * ** Function: check_background()
- * ** Description: Checks for the background child processes that have
- *      finished. If a process has terminated, displays a message
- *      showing the process id and exit status.
- * ** Parameters: int for retrieving the exit or termnation status.
- * *********************************************************************/
-void catchSIGINT(int signo){
-    //Must show number of signal that killed any foreground child
-    //process, child process must terminate itself
-    char *message = "SIGINT.\n";
-    write(STDOUT_FILENO, message, 8);
-}
-
-
-
 /************************************************************************
  * ** Function: catchSIGTSTP()
  * ** Description: Catchable by the shell only. Turns foreground-only
@@ -232,7 +214,7 @@ void catchSIGTSTP(int signo){
 int main(){
     //Define signal handling
     struct sigaction SIGINT_action = {0}, SIGTSTP_action = {0};
-    SIGINT_action.sa_handler = catchSIGINT;
+    SIGINT_action.sa_handler = SIG_IGN;//Set up to ignore signals
     sigfillset(&SIGINT_action.sa_mask);//Block/delay all signals arriving
     SIGINT_action.sa_flags = 0;
     sigaction(SIGINT, &SIGINT_action, NULL);
@@ -246,7 +228,6 @@ int main(){
     char *builtin_commands[3] = {"exit", "status", "cd"};
     char *user_input = malloc(sizeof(char) * MAX_LENGTH);
     char *pid = malloc(sizeof(char) * 10); //For converting the PID into a string
-    //char *cwd = malloc(sizeof(char) * MAX_LENGTH);
     char *args[MAX_ARGS];
     char in_file[MAX_LENGTH], out_file[MAX_LENGTH];//For I/O file names
     int infile = -1;
@@ -298,12 +279,12 @@ int main(){
             switch(cpid){
                 //If fork successful:
                 case 0:
-                    /*//If foreground process or foreground-only mode,
+                    //If foreground process or foreground-only mode,
                     //set to default SIGINT handling
                     if(!run_in_backgrnd || no_backgrnd){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
-                    }*/
+                    }
                     //Handle input file
                     if(strcmp(in_file, "") != 0 && in_file != NULL){
                         //Open input file
