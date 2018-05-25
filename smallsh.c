@@ -149,10 +149,12 @@ void status(int exit_status){
     //If exit status, print exit value
     if(WIFEXITED(exit_status)){
         printf("exit value %d\n", WEXITSTATUS(exit_status));
+        fflush(stdout);
     }
     //Else, print terminating signal of last process
     else{
         printf("terminated by signal %d\n", WTERMSIG(exit_status));
+        fflush(stdout);
     }
     return;
 }
@@ -198,11 +200,13 @@ void catchSIGTSTP(int signo){
     //If no_backgrnd is false, turn foreground-only mode on
     if(no_backgrnd == false){
         write(STDOUT_FILENO, foreground_on, 49);
+        fflush(stdout);
         no_backgrnd = true;
     }
     //Else, turn foreground-only mode off
     else{
         write(STDOUT_FILENO, foreground_off, 30);
+        fflush(stdout);
         no_backgrnd = false;
     }
 }
@@ -243,8 +247,6 @@ int main(){
 
     //Run shell
     while(!exit_shell){
-        //Check for background child processes and clean up
-        check_background();
         //Display prompt and get valid input
         while(!valid){
             valid = prompt(user_input);
@@ -301,6 +303,7 @@ int main(){
                             perror("dup2 in\n");
                             exit(2);
                         }
+                        close(infile);
                     }
                     //If background process, foreground-only mode
                     //is disabled, and input file not specified, 
@@ -335,6 +338,7 @@ int main(){
                             perror("dup2 out\n");
                             exit(2);
                         }
+                        close(outfile);
                     }
                     
                     //If background process, not in foreground-only mode,
@@ -381,6 +385,7 @@ int main(){
                         //If waiting and terminated by SIGINT, notify the user
                         if(exit_pid > 0 && WIFSIGNALED(exit_status)){
                             printf("Terminated by signal %d\n", WTERMSIG(exit_status));
+                            fflush(stdout);
                         }
                     }
             }
@@ -388,6 +393,9 @@ int main(){
         //Reset valid input and run_in_backgrnd variables
         valid = false;
         run_in_backgrnd = false;
+        
+        //Check for background child processes and clean up
+        check_background();
     }
     //Clean up containers
     free(user_input);
