@@ -5,31 +5,12 @@
  * ** Description: Simple shell program written for CS 344
  * **   Spring 2018.
  * *********************************************************************/
-/* Other tasks:
- * ****Parse input of ‘$$’ as current process id****
- * Wait for completion of foreground commands before prompting again
- * Do not wait for background commands to complete, return command line access
- * and control to user immediately AFTER forking. Periodically check for
- * background child processes to complete with waidpid(...NOHANG…))
- * Store PIDs of non-completed background processes in an array?
- * Print out background process completed BEFORE command line access and control
- * are returned to the user
- * Redirect background stdin from /dev/null, redirect stdout to /dev/null if no
- * other target
- * Print process id of background process when the process begins
- * When terminates, show message with PID and exit status. 
- * Check bckgrnd processes complete BEFORE prompting for a new command
- * Change behavior of CTRL-C (SIGINT) and CTRL-Z to (SIGTSTP)
- *
- * */
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
-#include <assert.h>
 #include <fcntl.h>
 
 #define MAX_LENGTH 2048
@@ -43,7 +24,7 @@ bool no_backgrnd = false; //Default value is false
  * ** Function: prompt()
  * ** Description: Displays the shell prompt ":" and receives user input;
  *      Returns true if valid input, otherwise returns false if comment
- *      or blank line.
+ *      or blank line or null terminator.
  * ** Parameters: None
  * *********************************************************************/
 bool prompt(char *line){
@@ -237,6 +218,7 @@ int main(){
     SIGTSTP_action.sa_flags = 0;
     sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
+    //Define set of signals to block/unblock using sigprocmask()
     sigset_t signals;
     sigemptyset(&signals);
     sigaddset(&signals, SIGTSTP);
@@ -260,8 +242,6 @@ int main(){
 
     //Run shell
     while(!exit_shell){
-
-
         //Display prompt and get valid input
         while(!valid){
             valid = prompt(user_input);
@@ -270,14 +250,16 @@ int main(){
         //Prepare containers for input   
         memset(in_file, '\0', sizeof(in_file));
         memset(out_file, '\0', sizeof(out_file));
+        
         //Set each arg pointer to NULL
         for(i = 0; i < MAX_ARGS; i++){
             args[i] = NULL;
         }
+        
         //Process input
         process_input(user_input, pid, args, in_file, out_file, &run_in_backgrnd);
         
-        //If built-in command to run in foreground, execute 
+        //If built-in command, run in foreground 
         if(strcmp(args[0], "status") == 0){      
             status(exit_status);
         }
@@ -325,6 +307,7 @@ int main(){
                         }
                         close(infile);
                     }
+
                     //If background process, foreground-only mode
                     //is disabled, and input file not specified, 
                     //redirect to /dev/null
@@ -401,8 +384,7 @@ int main(){
                     else{
                         //Block SIGTSTP until waitpid finishes
                         sigprocmask(SIG_BLOCK, &signals, NULL);
-                        //Block the parent until the child with given pid
-                        //terminates
+                        //Block the parent until the child with given pid terminates
                         exit_pid = waitpid(cpid, &exit_status, 0);
                         //If waiting and terminated by SIGINT, notify the user
                         if(exit_pid > 0 && WIFSIGNALED(exit_status)){
