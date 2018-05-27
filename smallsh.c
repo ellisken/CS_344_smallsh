@@ -56,6 +56,7 @@ bool prompt(char *line){
 void process_input(char *line, char *pid, char *args[], char *in, char *out, bool *backgrnd){
     char *item = NULL; //For tokenizing the input line
     int arg_ct = 0;
+    const char lastchar = line[strlen(line) - 2];//Get last char (exempting '\n')
     char *ptr;
 
     //Else, tokenize string by spaces
@@ -77,7 +78,10 @@ void process_input(char *line, char *pid, char *args[], char *in, char *out, boo
                 break;
             //If token is "&", change value of run_in_background
             case '&':
-                *backgrnd = true;
+                //Verify it's the last argument
+                if(*item == lastchar){
+                    *backgrnd = true;
+                }
                 break;
             //Else, save in args[]
             default:
@@ -284,7 +288,7 @@ int main(){
 
                     //If foreground process or foreground-only mode,
                     //set to default SIGINT handling
-                    if(!run_in_backgrnd || no_backgrnd){
+                    if(run_in_backgrnd == false || no_backgrnd == true){
                         SIGINT_action.sa_handler = SIG_DFL;
                         sigaction(SIGINT, &SIGINT_action, NULL);
                     }
@@ -311,7 +315,7 @@ int main(){
                     //If background process, foreground-only mode
                     //is disabled, and input file not specified, 
                     //redirect to /dev/null
-                    else if(run_in_backgrnd && !no_backgrnd){
+                    else if(run_in_backgrnd == true && no_backgrnd == false){
                         devnull = open("/dev/null", O_WRONLY);
                         if(devnull == -1){
                             printf("cannot open /dev/null for output\n");
@@ -346,7 +350,7 @@ int main(){
                     
                     //If background process, not in foreground-only mode,
                     //and output file not specified, redirect to /dev/null
-                    else if(run_in_backgrnd && !no_backgrnd){
+                    else if(run_in_backgrnd == true && no_backgrnd == false){
                         devnull = open("/dev/null", O_WRONLY);
                         if(devnull == -1){
                             printf("cannot open /dev/null for input\n");
@@ -376,7 +380,7 @@ int main(){
                 //Handle background/foreground 
                 default:
                     //Print background pid
-                    if(run_in_backgrnd && !no_backgrnd){
+                    if(run_in_backgrnd == true && no_backgrnd == false){
                         printf("background process id is: %d\n", cpid);
                         fflush(stdout);
                     }
