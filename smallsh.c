@@ -1,9 +1,8 @@
 /*********************************************************************
  * ** Program Filename: smallsh.c
- * ** Author: Kendra Ellis <ellisken@oregonstate.edu>
+ * ** Author: Kendra Ellis <ellisken>
  * ** Date: May 15, 2018
- * ** Description: Simple shell program written for CS 344
- * **   Spring 2018.
+ * ** Description: Simple shell program in C
  * *********************************************************************/
 #include <stdbool.h>
 #include <stdio.h>
